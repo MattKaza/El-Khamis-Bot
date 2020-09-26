@@ -7,14 +7,14 @@ New_bot.py is the shit.
 * CR
 * Check edge cases
 * Check logic
-* Build docker
-* Check docker
+* ~~Build docker~~
+* ~~Check docker~~
 * Try to deploy
 * Siber
-* Check no-one gets double bel-khamised
+* ~~Check no-one gets double bel-khamised~~
 
 ## TODO Features
 
-* Print a greeting to user
+* ~~Print a greeting to user~~
 * Check for bel-khamisness not in GMT?
   
