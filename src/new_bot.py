@@ -15,7 +15,7 @@ def hala_bel_khamis():
 
 
 def key(user):
-    return hash(hash(user) * hash(user.guild))
+    return hash((hash(user) * hash(user.guild)) + hash(time.strftime('%W%Y')))
 
 
 async def have_a_nice_weekend(member):
