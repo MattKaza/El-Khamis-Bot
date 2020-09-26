@@ -4,92 +4,101 @@ import time
 import threading
 from asyncio import TimeoutError as AsyncTimeout, sleep
 
-client = discord.Client(fetch_offline_members=False)
+bot_client = discord.Client(fetch_offline_members=False)
 users_list_lock = threading.Lock()
 playing_list_lock = threading.Lock()
-
 returning_users = set()
-currently_playing_guilds = set()
-currently_playing_channels = set()
 
 
-async def hala_bel_khamis():  # TODO - not be in GMT
+def hala_bel_khamis():
     return time.gmtime().tm_wday == (3 or 4 or 5)  # If today is thu, fri or sat (0 is mon, 6 is sun)
 
 
-async def currently_playing(guild_hash, channel_hash):
-    global currently_playing_channels
-    global currently_playing_guilds
-
-    if channel_hash in currently_playing_channels:
-        return True
-
-    elif guild_hash in currently_playing_guilds:
-        while guild_hash in currently_playing_guilds:
-            await sleep(3)  # Waits until the bot has finished in playing in the other guild channel
-
-    with playing_list_lock:
-        currently_playing_channels.add(channel_hash)
-        currently_playing_guilds.add(guild_hash)
-    return False
-
-
-async def cleanup(channel_hash, guild_hash):
-    global playing_list_lock
-    global currently_playing_channels
-    global currently_playing_guilds
-
-    with playing_list_lock:
-        currently_playing_guilds.remove(guild_hash)
-        currently_playing_channels.remove(channel_hash)
+def key(user):
+    return hash((hash(user) * hash(user.guild)) + hash(time.strftime('%W%Y')))
 
 
 async def have_a_nice_weekend(member):
-    pass  # TODO feature/implement_nice_weekend_prints
+    message = '{0}, Have a nice weekend! <3'.format(member.mention)
+    await member.send(message)
+    print('[!] Successfuly sent {0} to {1}'.format(message, member))
 
 
-async def play(channel, member):
+async def play(voice_client):
     try:
-        voice_client = await channel.connect()
         voice_client.play(
             source=discord.FFmpegOpusAudio(
                 source='./resources/encoded.opus',
                 bitrate=48
-            )
-                #after=lambda: have_a_nice_weekend(member)
-                # TODO set after
+            ),
         )
-
-    except (AsyncTimeout, discord.opus.OpusNotLoaded) as e:
-        await voice_client.disconnect(force=True)
-        return  # TODO An Error happened and it makes me sad, print something
-
-    except discord.ClientException:
-        return
-
+        print('... Started playing at {0}\{1}...'.format(voice_client.guild, voice_client.channel))
+        while voice_client.is_playing():
+            await sleep(3)
+        print('... Finished playing at {0}\{1}...'.format(voice_client.guild, voice_client.channel))
+    
     finally:
-        await cleanup(hash(channel), hash(channel.guild))
+        await voice_client.disconnect(force=True)
+        print('[+] Successfuly disconnected from {0}\{1}'.format(voice_client.guild, voice_client.channel))
+
+    
+async def connect_and_play(channel, member):
+    global bot_client
+    
+    try:
+        print('[+] Trying to play for {0} at {1}\{2}'.format(member, channel.guild, channel))
+        voice_client = await channel.connect()
+        await play(voice_client)
+    
+    except discord.errors.ClientException:
+        # We either can't connect because we are already playing on this channel or on this guild
+        
+        if bot_client.user in channel.members:    
+            print('[!] {0} joined {1}\{2}, where I\'m already playing'.format(member, channel.guild, channel))
+            
+            while bot_client.user in channel.members:
+                await sleep(3)
+        
+        else:
+            print('[!] {0} joined {1}\{2}, but I\'m probably already playing in that guild'.format(member, channel.guild, channel))
+            while channel.guild.me.voice.channel is not None:
+                await sleep(3)
+            connect_and_play(channel, member)
+            # TODO check that it works
+            
+    finally:
+        with users_list_lock:
+            if key(member) not in returning_users:
+                await have_a_nice_weekend(member)
+                returning_users.add(key(member))
 
 
-@client.event
+@bot_client.event
 async def on_ready():
-    print(f'{client.user} has connected to Discord!')
+    print(f'{bot_client.user} has connected to Discord!')
 
 
-@client.event
+@bot_client.event
 async def on_voice_state_update(member, before, after):
+    global bot_client
     global returning_users
     global users_list_lock
 
+    def is_deaf():
+        return (after.deaf or after.self_deaf)
+
+    def was_deaf():
+        return (before.deaf or before.self_deaf)
+    
+    def joined_channel():
+        return (before.channel is not after.channel and after.channel is not None)
+    
     if hala_bel_khamis():
-        if not after.deaf and not after.self_deaf:
-            if (before.channel is None and after.channel is not None) or (before.deaf or before.self_deaf):
-                if hash(member) not in returning_users:
-                    playing = await currently_playing(hash(after.channel.guild), hash(after.channel))
-                    if not playing:
-                        with users_list_lock:
-                            returning_users.add(hash(member))
-                        await play(after.channel, member)
+        if member != bot_client.user:
+            if not is_deaf():
+                if joined_channel() or was_deaf():
+                    if key(member) not in returning_users:
+                        await connect_and_play(after.channel, member)
 
     elif len(returning_users) != 0:
         with users_list_lock:
@@ -97,4 +106,4 @@ async def on_voice_state_update(member, before, after):
 
 
 print(f'Discord API version: {discord.__version__}')
-client.run(os.environ['BOT_TOKEN'])
+bot_client.run(os.environ['BOT_TOKEN'])
