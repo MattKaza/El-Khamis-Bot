@@ -1,9 +1,12 @@
 FROM python:3.8-slim-buster
 
+
+RUN adduser python
+
 RUN mkdir /home/python/bel-khamis && chown -R python:python /home/python/bel-khamis
 WORKDIR /home/python/bel-khamis
 
-RUN apt-get install ffmpeg
+RUN apt-get update && apt-get -y install ffmpeg
 
 COPY requirements.txt ./
 RUN pip install -r requirements.txt
