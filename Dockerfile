@@ -13,8 +13,6 @@ RUN pip install -r requirements.txt
 
 USER python
 
-ENV BOT_TOKEN Njk2MTIxODkzNTc2NjM4NTc0.XokICA.l7N_GEwoUbNi4biXlV2gvDfp3QM
-
 COPY --chown=python:python ./src ./src
 COPY --chown=python:python ./resources ./resources
 

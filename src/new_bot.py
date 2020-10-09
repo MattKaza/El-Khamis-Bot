@@ -1,4 +1,5 @@
 import os
+import sys
 import discord
 import time
 import threading
@@ -10,19 +11,20 @@ playing_list_lock = threading.Lock()
 returning_users = set()
 
 
+def print(str):
+    sys.stdout.write(str)
+    
 def hala_bel_khamis():
-    return time.gmtime().tm_wday == (3 or 4 or 5)  # If today is thu, fri or sat (0 is mon, 6 is sun)
-
+    return time.gmtime().tm_wday in [3, 4, 5]  # If today is thu, fri or sat (0 is mon, 6 is sun)
 
 def key(user):
     return hash((hash(user) * hash(user.guild)) + hash(time.strftime('%W%Y')))
 
-
 async def have_a_nice_weekend(member):
     message = '{0}, Have a nice weekend! <3'.format(member.mention)
     await member.send(message)
-    print('[!] Successfuly sent {0} to {1}'.format(message, member))
-
+    print('[+] Sent {0} to {1}'.format(message, member))
+    return
 
 async def play(voice_client):
     try:
@@ -41,12 +43,11 @@ async def play(voice_client):
         await voice_client.disconnect(force=True)
         print('[+] Successfuly disconnected from {0}\{1}'.format(voice_client.guild, voice_client.channel))
 
-    
 async def connect_and_play(channel, member):
     global bot_client
     
     try:
-        print('[+] Trying to play for {0} at {1}\{2}'.format(member, channel.guild, channel))
+        print('... Trying to play for {0} at {1}\{2}'.format(member, channel.guild, channel))
         voice_client = await channel.connect()
         await play(voice_client)
     
@@ -61,23 +62,30 @@ async def connect_and_play(channel, member):
         
         else:
             print('[!] {0} joined {1}\{2}, but I\'m probably already playing in that guild'.format(member, channel.guild, channel))
-            while channel.guild.me.voice.channel is not None:
+            while channel.guild.me.voice is not None:
+                print(channel.guild.me.voice)
                 await sleep(3)
-            connect_and_play(channel, member)
-            # TODO check that it works
+            await connect_and_play(channel, member)
             
     finally:
+        # Check to prevent double messages to user from two threads 
         with users_list_lock:
             if key(member) not in returning_users:
                 await have_a_nice_weekend(member)
                 returning_users.add(key(member))
-
+        print('... Left Connect&Play logic for {0}'.format(member))
 
 @bot_client.event
 async def on_ready():
     print(f'{bot_client.user} has connected to Discord!')
 
-
+@bot_client.event
+async def on_message(message):
+    if type(message.channel) is discord.DMChannel:
+        if message.author is not bot_client.user:
+            print('[+] Recieved a DM from {0}:'.format(message.author))
+            print('    \"{0}\"'.format(message.content))
+    
 @bot_client.event
 async def on_voice_state_update(member, before, after):
     global bot_client
@@ -94,13 +102,15 @@ async def on_voice_state_update(member, before, after):
         return (before.channel is not after.channel and after.channel is not None)
     
     if hala_bel_khamis():
-        if member != bot_client.user:
+        if not member.bot:
             if not is_deaf():
                 if joined_channel() or was_deaf():
                     if key(member) not in returning_users:
                         await connect_and_play(after.channel, member)
 
     elif len(returning_users) != 0:
+        print('[!] All in all, we had {0} users this week!'.format(len(returning_users)))
+        print('[!] Clearing the users list...')
         with users_list_lock:
             returning_users.clear()
 
