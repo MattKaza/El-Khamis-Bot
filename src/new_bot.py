@@ -1,18 +1,21 @@
 import os
-import sys
 import discord
 import time
 import threading
-from asyncio import TimeoutError as AsyncTimeout, sleep
+from asyncio import sleep
 
-bot_client = discord.Client(fetch_offline_members=False)
+bot_client = discord.Client()
 users_list_lock = threading.Lock()
 playing_list_lock = threading.Lock()
 returning_users = set()
 
-
-def print(str):
-    sys.stdout.write(str)
+"""
+TODO list (as of 2020-10-10):
+* Update API to 1.5.0
+* Debug weird behavior when someone joins another channel on 1.5.0
+* Implement logic when someone joins another channel (Right now it's just a message)
+* Personalised DM per guild?
+"""
     
 def hala_bel_khamis():
     return time.gmtime().tm_wday in [3, 4, 5]  # If today is thu, fri or sat (0 is mon, 6 is sun)
@@ -62,10 +65,9 @@ async def connect_and_play(channel, member):
         
         else:
             print('[!] {0} joined {1}\{2}, but I\'m probably already playing in that guild'.format(member, channel.guild, channel))
-            while channel.guild.me.voice is not None:
-                print(channel.guild.me.voice)
-                await sleep(3)
-            await connect_and_play(channel, member)
+            # while channel.guild.me is not None:
+            #     await sleep(3)
+            # await connect_and_play(channel, member)
             
     finally:
         # Check to prevent double messages to user from two threads 
@@ -116,4 +118,5 @@ async def on_voice_state_update(member, before, after):
 
 
 print(f'Discord API version: {discord.__version__}')
-bot_client.run(os.environ['BOT_TOKEN'])
+bot_client.run(os.environ['TOKEN'])
+

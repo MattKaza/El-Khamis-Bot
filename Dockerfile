@@ -13,7 +13,9 @@ RUN pip install -r requirements.txt
 
 USER python
 
+# ENV TOKEN <NOT HERE>
+
 COPY --chown=python:python ./src ./src
 COPY --chown=python:python ./resources ./resources
 
-CMD python3 ./src/new_bot.py
+CMD python3 -u ./src/new_bot.py
