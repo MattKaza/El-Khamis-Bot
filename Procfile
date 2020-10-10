@@ -1,0 +1,1 @@
+web: python3 -u ./src/new_bot.py
