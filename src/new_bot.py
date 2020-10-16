@@ -1,6 +1,6 @@
 import os
 import discord
-import time
+from datetime import datetime, timedelta
 import threading
 from asyncio import sleep
 
@@ -16,12 +16,31 @@ TODO list (as of 2020-10-10):
 * Implement logic when someone joins another channel (Right now it's just a message)
 * Personalised DM per guild?
 """
+"""
+TODO Bugfixes on 1.1.0 (2020-10-16):
+* Bot now checks latest sent DM
+    in order to not khamis someone twice, since heroku resets it's dynos.
+* This does mean that someone will not get belkhamised per guild,
+    as the dms have no difference.
+"""
     
-def hala_bel_khamis():
-    return time.gmtime().tm_wday in [3, 4, 5]  # If today is thu, fri or sat (0 is mon, 6 is sun)
+def hala_bel_khamis(date=datetime.utcnow()):
+    return date.weekday() in [3, 4, 5]  # If today is thu, fri or sat (0 is mon, 6 is sun)
 
 def key(user):
-    return hash((hash(user) * hash(user.guild)) + hash(time.strftime('%W%Y')))
+    return hash(str(user) + str(user.guild) + str(datetime.utcnow().isocalendar()[:-1]))
+
+async def dm_sent_this_weekend(user):
+    start_of_week = datetime.utcnow() - timedelta(days=datetime.utcnow().weekday())
+
+    if user.dm_channel is None:
+        await user.create_dm()
+
+    async for message in user.dm_channel.history(after=start_of_week, oldest_first=False):
+        if message.author == bot_client.user and hala_bel_khamis(message.created_at):
+            return True
+    
+    return False
 
 async def have_a_nice_weekend(member):
     message = '{0}, Have a nice weekend! <3'.format(member.mention)
@@ -108,7 +127,8 @@ async def on_voice_state_update(member, before, after):
             if not is_deaf():
                 if joined_channel() or was_deaf():
                     if key(member) not in returning_users:
-                        await connect_and_play(after.channel, member)
+                        if not await dm_sent_this_weekend(member):
+                            await connect_and_play(after.channel, member)
 
     elif len(returning_users) != 0:
         print('[!] All in all, we had {0} users this week!'.format(len(returning_users)))
