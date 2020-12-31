@@ -1,6 +1,6 @@
 import os
 import discord
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 import threading
 from asyncio import sleep
 
@@ -29,6 +29,7 @@ Changelist 1.2.0 (2020-12-31):
 """
 BELKHAMIS_DAYS = [3, 4, 5]  # If today is thu, fri or sat (0 is mon, 6 is sun)
 
+
 def hala_bel_khamis(date=datetime.utcnow()):
     return date.weekday() in BELKHAMIS_DAYS
 
@@ -38,19 +39,19 @@ def key(user):
 
 
 async def dm_sent_this_weekend(user):
-    print('... Checking if I sent {0} a message this weekend...'.format(user))
-    start_of_week = datetime.utcnow() - timedelta(days=datetime.utcnow().weekday())
-    print('..... Start of week is {0} .....'.format(start_of_week))
-
-    if user.dm_channel is None:
-        await user.create_dm()
-
-    async for message in user.dm_channel.history(after=start_of_week, oldest_first=False):
-        print('...Found a message sent this week! it was sent at {0} and says {1}...'.format(message.created_at, message.content))
-        if message.author == bot_client.user and hala_bel_khamis(message.created_at):
-            print('[!] I did send {0} a message this weekend...'.format(user))
-            return True
-    print('[+] {0} did not get a message this weekend...'.format(user))
+    # print('... Checking if I sent {0} a message this weekend...'.format(user))
+    # start_of_week = datetime.utcnow() - timedelta(days=datetime.utcnow().weekday())
+    # print('..... Start of week is {0} .....'.format(start_of_week))
+    #
+    # if user.dm_channel is None:
+    #     await user.create_dm()
+    #
+    # async for message in user.dm_channel.history(after=start_of_week, oldest_first=False):
+    #     print('...Found a message sent this week! it was sent at {0} and says {1}...'.format(message.created_at, message.content))
+    #     if message.author == bot_client.user and hala_bel_khamis(message.created_at):
+    #         print('[!] I did send {0} a message this weekend...'.format(user))
+    #         return True
+    # print('[+] {0} did not get a message this weekend...'.format(user))
     return False
 
 
@@ -149,6 +150,7 @@ async def connect_and_play(channel, member):
             if key(member) not in returning_users:
                 messages = [await have_a_nice_weekend(member)]
                 messages += get_seasonal_messages()
+                print('Messages are: {0}'.format(messages))
                 for message in messages:
                     await send_message(member, message)
                 returning_users.add(key(member))
@@ -200,4 +202,3 @@ async def on_voice_state_update(member, before, after):
 
 print(f'Discord API version: {discord.__version__}')
 bot_client.run(os.environ['TOKEN'])
-
