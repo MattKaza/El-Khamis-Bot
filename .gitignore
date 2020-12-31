@@ -2,7 +2,9 @@ bin/
 include/
 lib/
 lib64
+lib64/
 .vscode/
 share/
 pyvenv.cfg
 .env
+.idea/

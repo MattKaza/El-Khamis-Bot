@@ -39,19 +39,19 @@ def key(user):
 
 
 async def dm_sent_this_weekend(user):
-    print('... Checking if I sent {0} a message this weekend...'.format(user))
+    print('DEBUG: Checking if I sent {0} a message this weekend'.format(user))
     start_of_week = datetime.utcnow() - timedelta(days=datetime.utcnow().weekday())
-    print('..... Start of week is {0} .....'.format(start_of_week))
+    print('DEBUG: Start of week is {0}'.format(start_of_week))
 
     if user.dm_channel is None:
         await user.create_dm()
 
     async for message in user.dm_channel.history(after=start_of_week, oldest_first=False):
-        print('...Found a message sent this week! it was sent at {0} and says {1}...'.format(message.created_at, message.content))
+        print('DEBUG: Found a message sent this week! it was sent at {0} and says {1}'.format(message.created_at, message.content))
         if message.author == bot_client.user and hala_bel_khamis(message.created_at):
-            print('[!] I did send {0} a message this weekend...'.format(user))
+            print('INFO: I did send {0} a message this weekend'.format(user))
             return True
-    print('[+] {0} did not get a message this weekend...'.format(user))
+    print('INFO: {0} did not get a message this weekend!'.format(user))
     return False
 
 
@@ -111,7 +111,7 @@ async def play(voice_client):
                 bitrate=48
             ),
         )
-        print('... Started playing at {0}\\{1}...'.format(voice_client.guild, voice_client.channel))
+        print('DEBUG: Started playing at {0}\\{1}...'.format(voice_client.guild, voice_client.channel))
         while voice_client.is_playing():
             await sleep(3)
         print('DEBUG: Finished playing at {0}\\{1}'.format(voice_client.guild, voice_client.channel))
@@ -167,7 +167,7 @@ async def on_ready():
 async def on_message(message):
     if type(message.channel) is discord.DMChannel:
         if message.author is not bot_client.user:
-            print('[CRITICAL: Recieved a DM from {0}:'.format(message.author))
+            print('CRITICAL: Recieved a DM from {0}:'.format(message.author))
             print('    \"{0}\"'.format(message.content))
 
 
