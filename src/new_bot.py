@@ -39,19 +39,19 @@ def key(user):
 
 
 async def dm_sent_this_weekend(user):
-    # print('... Checking if I sent {0} a message this weekend...'.format(user))
-    # start_of_week = datetime.utcnow() - timedelta(days=datetime.utcnow().weekday())
-    # print('..... Start of week is {0} .....'.format(start_of_week))
-    #
-    # if user.dm_channel is None:
-    #     await user.create_dm()
-    #
-    # async for message in user.dm_channel.history(after=start_of_week, oldest_first=False):
-    #     print('...Found a message sent this week! it was sent at {0} and says {1}...'.format(message.created_at, message.content))
-    #     if message.author == bot_client.user and hala_bel_khamis(message.created_at):
-    #         print('[!] I did send {0} a message this weekend...'.format(user))
-    #         return True
-    # print('[+] {0} did not get a message this weekend...'.format(user))
+    print('... Checking if I sent {0} a message this weekend...'.format(user))
+    start_of_week = datetime.utcnow() - timedelta(days=datetime.utcnow().weekday())
+    print('..... Start of week is {0} .....'.format(start_of_week))
+
+    if user.dm_channel is None:
+        await user.create_dm()
+
+    async for message in user.dm_channel.history(after=start_of_week, oldest_first=False):
+        print('...Found a message sent this week! it was sent at {0} and says {1}...'.format(message.created_at, message.content))
+        if message.author == bot_client.user and hala_bel_khamis(message.created_at):
+            print('[!] I did send {0} a message this weekend...'.format(user))
+            return True
+    print('[+] {0} did not get a message this weekend...'.format(user))
     return False
 
 
@@ -107,7 +107,7 @@ async def play(voice_client):
     try:
         voice_client.play(
             source=discord.FFmpegOpusAudio(
-                source='./resources/encodedd.opus',
+                source='./resources/encoded.opus',
                 bitrate=48
             ),
         )
