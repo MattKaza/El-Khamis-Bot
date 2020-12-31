@@ -107,7 +107,7 @@ async def play(voice_client):
     try:
         voice_client.play(
             source=discord.FFmpegOpusAudio(
-                source='./resources/encoded.opus',
+                source='./resources/encodedd.opus',
                 bitrate=48
             ),
         )
