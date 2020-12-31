@@ -94,6 +94,7 @@ async def get_seasonal_messages():
     if _is_a_between_b_c(matt_bday, now, next_belkhamis_date):
         messages.append('And happy birthday Matt!')
 
+    print(messages)
     return messages
 
 
@@ -149,7 +150,7 @@ async def connect_and_play(channel, member):
         with users_list_lock:
             if key(member) not in returning_users:
                 messages = [await have_a_nice_weekend(member)]
-                messages += get_seasonal_messages()
+                messages = get_seasonal_messages()
                 print('Messages are: {0}'.format(messages))
                 for message in messages:
                     await send_message(member, message)
