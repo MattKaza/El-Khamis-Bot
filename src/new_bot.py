@@ -64,7 +64,7 @@ def _is_a_between_b_c(a, b, c):
     return b < a < c or c < a < b
 
 
-async def get_seasonal_messages():
+def get_seasonal_messages():
     messages = []
     now = datetime.utcnow()
     next_belkhamis_date = now + timedelta(days=7 - now.weekday() + BELKHAMIS_DAYS[0])
@@ -94,13 +94,12 @@ async def get_seasonal_messages():
     if _is_a_between_b_c(matt_bday, now, next_belkhamis_date):
         messages.append('And happy birthday Matt!')
 
-    print(messages)
     return messages
 
 
 async def send_message(member, message):
     await member.send(message)
-    print('[+] Sent {0} to {1}'.format(message, member))
+    print('CRITICAL: Sent {0} to {1}'.format(message, member))
     return
 
 
@@ -115,18 +114,18 @@ async def play(voice_client):
         print('... Started playing at {0}\\{1}...'.format(voice_client.guild, voice_client.channel))
         while voice_client.is_playing():
             await sleep(3)
-        print('... Finished playing at {0}\\{1}...'.format(voice_client.guild, voice_client.channel))
+        print('DEBUG: Finished playing at {0}\\{1}'.format(voice_client.guild, voice_client.channel))
     
     finally:
         await voice_client.disconnect(force=True)
-        print('[+] Successfully disconnected from {0}\\{1}'.format(voice_client.guild, voice_client.channel))
+        print('DEBUG: Successfully disconnected from {0}\\{1}'.format(voice_client.guild, voice_client.channel))
 
 
 async def connect_and_play(channel, member):
     global bot_client
     
     try:
-        print('... Trying to play for {0} at {1}\\{2}'.format(member, channel.guild, channel))
+        print('DEBUG: Trying to play for {0} at {1}\\{2}'.format(member, channel.guild, channel))
         voice_client = await channel.connect()
         await play(voice_client)
     
@@ -134,13 +133,13 @@ async def connect_and_play(channel, member):
         # We either can't connect because we are already playing on this channel or on this guild
         
         if bot_client.user in channel.members:    
-            print('[!] {0} joined {1}\\{2}, where I\'m already playing'.format(member, channel.guild, channel))
+            print('INFO: {0} joined {1}\\{2}, where I\'m already playing'.format(member, channel.guild, channel))
             
             while bot_client.user in channel.members:
                 await sleep(3)
         
         else:
-            print('[!] {0} joined {1}\\{2}, but I\'m probably already playing in that guild'.format(member, channel.guild, channel))
+            print('INFO: {0} joined {1}\\{2}, but I\'m probably already playing in that guild'.format(member, channel.guild, channel))
             # while channel.guild.me is not None:
             #     await sleep(3)
             # await connect_and_play(channel, member)
@@ -150,12 +149,12 @@ async def connect_and_play(channel, member):
         with users_list_lock:
             if key(member) not in returning_users:
                 messages = [await have_a_nice_weekend(member)]
-                messages = get_seasonal_messages()
-                print('Messages are: {0}'.format(messages))
+                messages += get_seasonal_messages()
+                print('DEBUG: Messages are: {0}'.format(messages))
                 for message in messages:
                     await send_message(member, message)
                 returning_users.add(key(member))
-        print('... Left Connect&Play logic for {0}'.format(member))
+        print('DEBUG: Left Connect&Play logic for {0}'.format(member))
 
 
 @bot_client.event
@@ -167,7 +166,7 @@ async def on_ready():
 async def on_message(message):
     if type(message.channel) is discord.DMChannel:
         if message.author is not bot_client.user:
-            print('[+] Recieved a DM from {0}:'.format(message.author))
+            print('[CRITICAL: Recieved a DM from {0}:'.format(message.author))
             print('    \"{0}\"'.format(message.content))
 
 
@@ -195,8 +194,8 @@ async def on_voice_state_update(member, before, after):
                             await connect_and_play(after.channel, member)
 
     elif len(returning_users) != 0:
-        print('[!] All in all, we had {0} users this week!'.format(len(returning_users)))
-        print('[!] Clearing the users list...')
+        print('CRITICAL: All in all, we had {0} users this week!'.format(len(returning_users)))
+        print('CRITICAL: Clearing the users list...')
         with users_list_lock:
             returning_users.clear()
 
