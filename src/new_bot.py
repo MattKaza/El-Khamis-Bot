@@ -1,6 +1,6 @@
 import os
 import discord
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import threading
 from asyncio import sleep
 
@@ -8,7 +8,6 @@ bot_client = discord.Client()
 users_list_lock = threading.Lock()
 playing_list_lock = threading.Lock()
 returning_users = set()
-
 """
 TODO list (as of 2020-10-10):
 * Update API to 1.5.0
@@ -23,12 +22,20 @@ TODO Bugfixes on 1.1.0 (2020-10-16):
 * This does mean that someone will not get belkhamised per guild,
     as the dms have no difference.
 """
-    
+"""
+Changelist 1.2.0 (2020-12-31):
+* Added logging to debug people not getting hamised on thursday morning
+* New feature: Seasonal greetings!
+"""
+BELKHAMIS_DAYS = [3, 4, 5]  # If today is thu, fri or sat (0 is mon, 6 is sun)
+
 def hala_bel_khamis(date=datetime.utcnow()):
-    return date.weekday() in [3, 4, 5]  # If today is thu, fri or sat (0 is mon, 6 is sun)
+    return date.weekday() in BELKHAMIS_DAYS
+
 
 def key(user):
     return hash(str(user) + str(user.guild) + str(datetime.utcnow().isocalendar()[:-1]))
+
 
 async def dm_sent_this_weekend(user):
     print('... Checking if I sent {0} a message this weekend...'.format(user))
@@ -43,14 +50,57 @@ async def dm_sent_this_weekend(user):
         if message.author == bot_client.user and hala_bel_khamis(message.created_at):
             print('[!] I did send {0} a message this weekend...'.format(user))
             return True
-    print('[+] I didn\'t send {0} a message this weekend...'.format(user))
+    print('[+] {0} did not get a message this weekend...'.format(user))
     return False
+
 
 async def have_a_nice_weekend(member):
     message = '{0}, Have a nice weekend! <3'.format(member.mention)
+    return message
+
+
+def _is_a_between_b_c(a, b, c):
+    return b < a < c or c < a < b
+
+
+async def get_seasonal_messages():
+    messages = []
+    now = datetime.utcnow()
+    next_belkhamis_date = now + timedelta(days=7 - now.weekday() + BELKHAMIS_DAYS[0])
+
+    # Case 1: Happy new year!
+    new_years_eve = datetime(year=now.year + 1, month=1, day=1)
+    if _is_a_between_b_c(new_years_eve, now, next_belkhamis_date):
+        messages.append('And have a happy new year 🥳')
+
+    # Case 2: Christmas
+    christmas = datetime(year=now.year, month=12, day=25)
+    if _is_a_between_b_c(christmas, now, next_belkhamis_date):
+        messages.append('And a merry christmas! 🎄❄️')
+
+    # Case 3: Summer break
+    summer_break_start = datetime(year=now.year, month=7, day=1)
+    if _is_a_between_b_c(summer_break_start, now, next_belkhamis_date):
+        messages.append('And enjoy this summer break!!')
+
+    # Case 4: John birthday
+    john_bday = datetime(year=now.year, month=7, day=19)
+    if _is_a_between_b_c(john_bday, now, next_belkhamis_date):
+        messages.append('And happy birthday Blocky!')
+
+    # Case 5: My birthday
+    matt_bday = datetime(year=now.year, month=10, day=6)
+    if _is_a_between_b_c(matt_bday, now, next_belkhamis_date):
+        messages.append('And happy birthday Matt!')
+
+    return messages
+
+
+async def send_message(member, message):
     await member.send(message)
     print('[+] Sent {0} to {1}'.format(message, member))
     return
+
 
 async def play(voice_client):
     try:
@@ -60,20 +110,21 @@ async def play(voice_client):
                 bitrate=48
             ),
         )
-        print('... Started playing at {0}\{1}...'.format(voice_client.guild, voice_client.channel))
+        print('... Started playing at {0}\\{1}...'.format(voice_client.guild, voice_client.channel))
         while voice_client.is_playing():
             await sleep(3)
-        print('... Finished playing at {0}\{1}...'.format(voice_client.guild, voice_client.channel))
+        print('... Finished playing at {0}\\{1}...'.format(voice_client.guild, voice_client.channel))
     
     finally:
         await voice_client.disconnect(force=True)
-        print('[+] Successfully disconnected from {0}\{1}'.format(voice_client.guild, voice_client.channel))
+        print('[+] Successfully disconnected from {0}\\{1}'.format(voice_client.guild, voice_client.channel))
+
 
 async def connect_and_play(channel, member):
     global bot_client
     
     try:
-        print('... Trying to play for {0} at {1}\{2}'.format(member, channel.guild, channel))
+        print('... Trying to play for {0} at {1}\\{2}'.format(member, channel.guild, channel))
         voice_client = await channel.connect()
         await play(voice_client)
     
@@ -81,13 +132,13 @@ async def connect_and_play(channel, member):
         # We either can't connect because we are already playing on this channel or on this guild
         
         if bot_client.user in channel.members:    
-            print('[!] {0} joined {1}\{2}, where I\'m already playing'.format(member, channel.guild, channel))
+            print('[!] {0} joined {1}\\{2}, where I\'m already playing'.format(member, channel.guild, channel))
             
             while bot_client.user in channel.members:
                 await sleep(3)
         
         else:
-            print('[!] {0} joined {1}\{2}, but I\'m probably already playing in that guild'.format(member, channel.guild, channel))
+            print('[!] {0} joined {1}\\{2}, but I\'m probably already playing in that guild'.format(member, channel.guild, channel))
             # while channel.guild.me is not None:
             #     await sleep(3)
             # await connect_and_play(channel, member)
@@ -96,13 +147,18 @@ async def connect_and_play(channel, member):
         # Check to prevent double messages to user from two threads 
         with users_list_lock:
             if key(member) not in returning_users:
-                await have_a_nice_weekend(member)
+                messages = [await have_a_nice_weekend(member)]
+                messages += get_seasonal_messages()
+                for message in messages:
+                    await send_message(member, message)
                 returning_users.add(key(member))
         print('... Left Connect&Play logic for {0}'.format(member))
+
 
 @bot_client.event
 async def on_ready():
     print(f'{bot_client.user} has connected to Discord!')
+
 
 @bot_client.event
 async def on_message(message):
@@ -110,7 +166,8 @@ async def on_message(message):
         if message.author is not bot_client.user:
             print('[+] Recieved a DM from {0}:'.format(message.author))
             print('    \"{0}\"'.format(message.content))
-    
+
+
 @bot_client.event
 async def on_voice_state_update(member, before, after):
     global bot_client
