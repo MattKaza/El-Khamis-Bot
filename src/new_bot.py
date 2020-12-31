@@ -153,6 +153,7 @@ async def connect_and_play(channel, member):
                 print('DEBUG: Messages are: {0}'.format(messages))
                 for message in messages:
                     await send_message(member, message)
+                    await sleep(1)
                 returning_users.add(key(member))
         print('DEBUG: Left Connect&Play logic for {0}'.format(member))
 
