@@ -72,7 +72,7 @@ def get_seasonal_messages():
     # Case 1: Happy new year!
     new_years_eve = datetime(year=now.year + 1, month=1, day=1)
     if _is_a_between_b_c(new_years_eve, now, next_belkhamis_date):
-        messages.append('And have a happy new year 🥳')
+        messages.append('And a happy new year 🥳')
 
     # Case 2: Christmas
     christmas = datetime(year=now.year, month=12, day=25)
@@ -153,7 +153,7 @@ async def connect_and_play(channel, member):
                 print('DEBUG: Messages are: {0}'.format(messages))
                 for message in messages:
                     await send_message(member, message)
-                    await sleep(1)
+                    await sleep(2)
                 returning_users.add(key(member))
         print('DEBUG: Left Connect&Play logic for {0}'.format(member))
 
