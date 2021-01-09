@@ -7,3 +7,4 @@ idna==2.10
 multidict==4.7.6
 yarl==1.6.0
 PyNaCl
+discord~=1.0.1

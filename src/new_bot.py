@@ -2,6 +2,8 @@ import os
 import discord
 from datetime import datetime, timedelta
 import threading
+import logging
+import sys
 from asyncio import sleep
 
 bot_client = discord.Client()
@@ -39,24 +41,30 @@ def key(user):
 
 
 async def dm_sent_this_weekend(user):
-    # print('... Checking if I sent {0} a message this weekend...'.format(user))
-    # start_of_week = datetime.utcnow() - timedelta(days=datetime.utcnow().weekday())
-    # print('..... Start of week is {0} .....'.format(start_of_week))
-    #
-    # if user.dm_channel is None:
-    #     await user.create_dm()
-    #
-    # async for message in user.dm_channel.history(after=start_of_week, oldest_first=False):
-    #     print('...Found a message sent this week! it was sent at {0} and says {1}...'.format(message.created_at, message.content))
-    #     if message.author == bot_client.user and hala_bel_khamis(message.created_at):
-    #         print('[!] I did send {0} a message this weekend...'.format(user))
-    #         return True
-    # print('[+] {0} did not get a message this weekend...'.format(user))
+    logging.debug("Checking if I sent {0} a message this weekend".format(user))
+    start_of_week = datetime.utcnow() - timedelta(days=datetime.utcnow().weekday())
+    logging.debug("Start of week is {0}".format(start_of_week))
+
+    if user.dm_channel is None:
+        await user.create_dm()
+
+    async for message in user.dm_channel.history(
+        after=start_of_week, oldest_first=False
+    ):
+        logging.debug(
+            "Found a message sent this week! it was sent at {0} and says {1}".format(
+                message.created_at, message.content
+            )
+        )
+        if message.author == bot_client.user and hala_bel_khamis(message.created_at):
+            logging.info("I did send {0} a message this weekend".format(user))
+            return True
+    logging.info("{0} did not get a message this weekend!".format(user))
     return False
 
 
 async def have_a_nice_weekend(member):
-    message = '{0}, Have a nice weekend! <3'.format(member.mention)
+    message = "{0}, Have a nice weekend! <3".format(member.mention)
     return message
 
 
@@ -67,39 +75,40 @@ def _is_a_between_b_c(a, b, c):
 def get_seasonal_messages():
     messages = []
     now = datetime.utcnow()
-    next_belkhamis_date = now + timedelta(days=7 - now.weekday() + BELKHAMIS_DAYS[0])
+    next_belkhamis_week = now + timedelta(days=7 - now.weekday() + BELKHAMIS_DAYS[0])
+    this_belkhamis_week = next_belkhamis_week - timedelta(days=7)
 
     # Case 1: Happy new year!
     new_years_eve = datetime(year=now.year + 1, month=1, day=1)
-    if _is_a_between_b_c(new_years_eve, now, next_belkhamis_date):
-        messages.append('And a happy new year 🥳')
+    if _is_a_between_b_c(new_years_eve, this_belkhamis_week, next_belkhamis_week):
+        messages.append("And a happy new year 🥳")
 
     # Case 2: Christmas
     christmas = datetime(year=now.year, month=12, day=25)
-    if _is_a_between_b_c(christmas, now, next_belkhamis_date):
-        messages.append('And a merry christmas! 🎄❄️')
+    if _is_a_between_b_c(christmas, this_belkhamis_week, next_belkhamis_week):
+        messages.append("And a merry christmas! 🎄❄️")
 
     # Case 3: Summer break
     summer_break_start = datetime(year=now.year, month=7, day=1)
-    if _is_a_between_b_c(summer_break_start, now, next_belkhamis_date):
-        messages.append('And enjoy this summer break!!')
+    if _is_a_between_b_c(summer_break_start, this_belkhamis_week, next_belkhamis_week):
+        messages.append("And enjoy this summer break!!")
 
     # Case 4: John birthday
     john_bday = datetime(year=now.year, month=7, day=19)
-    if _is_a_between_b_c(john_bday, now, next_belkhamis_date):
-        messages.append('And happy birthday Blocky!')
+    if _is_a_between_b_c(john_bday, this_belkhamis_week, next_belkhamis_week):
+        messages.append("And happy birthday Blocky!")
 
     # Case 5: My birthday
     matt_bday = datetime(year=now.year, month=10, day=6)
-    if _is_a_between_b_c(matt_bday, now, next_belkhamis_date):
-        messages.append('And happy birthday Matt!')
+    if _is_a_between_b_c(matt_bday, this_belkhamis_week, next_belkhamis_week):
+        messages.append("And happy birthday Matt!")
 
     return messages
 
 
 async def send_message(member, message):
     await member.send(message)
-    print('CRITICAL: Sent {0} to {1}'.format(message, member))
+    logging.critical("Sent {0} to {1}".format(message, member))
     return
 
 
@@ -107,99 +116,128 @@ async def play(voice_client):
     try:
         voice_client.play(
             source=discord.FFmpegOpusAudio(
-                source='./resources/encodedd.opus',
-                bitrate=48
+                source="./resources/encoded.opus", bitrate=48
             ),
         )
-        print('... Started playing at {0}\\{1}...'.format(voice_client.guild, voice_client.channel))
+        logging.debug(
+            "Started playing at {0}\\{1}...".format(
+                voice_client.guild, voice_client.channel
+            )
+        )
         while voice_client.is_playing():
             await sleep(3)
-        print('DEBUG: Finished playing at {0}\\{1}'.format(voice_client.guild, voice_client.channel))
-    
+        logging.debug(
+            "Finished playing at {0}\\{1}".format(
+                voice_client.guild, voice_client.channel
+            )
+        )
+
     finally:
         await voice_client.disconnect(force=True)
-        print('DEBUG: Successfully disconnected from {0}\\{1}'.format(voice_client.guild, voice_client.channel))
+        logging.debug(
+            "Successfully disconnected from {0}\\{1}".format(
+                voice_client.guild, voice_client.channel
+            )
+        )
 
 
 async def connect_and_play(channel, member):
     global bot_client
-    
+    should_send_message = False
     try:
-        print('DEBUG: Trying to play for {0} at {1}\\{2}'.format(member, channel.guild, channel))
+        logging.info(
+            "Trying to play for {0} at {1}\\{2}".format(member, channel.guild, channel)
+        )
         voice_client = await channel.connect()
         await play(voice_client)
-    
+        should_send_message = True
+
     except discord.errors.ClientException:
         # We either can't connect because we are already playing on this channel or on this guild
-        
-        if bot_client.user in channel.members:    
-            print('INFO: {0} joined {1}\\{2}, where I\'m already playing'.format(member, channel.guild, channel))
-            
+
+        if bot_client.user in channel.members:
+            logging.error(
+                "I'm already playing in the channel where {0} is - sending messages after song".format(
+                    member
+                )
+            )
+
             while bot_client.user in channel.members:
                 await sleep(3)
-        
+            logging.debug("Seems like I finished playing where {0} is".format(member))
+            if member in channel.members:
+                logging.debug(
+                    "{0} is still in {1} after I finished playing :)".format(
+                        member, channel
+                    )
+                )
+                should_send_message = True
+
         else:
-            print('INFO: {0} joined {1}\\{2}, but I\'m probably already playing in that guild'.format(member, channel.guild, channel))
-            # while channel.guild.me is not None:
-            #     await sleep(3)
-            # await connect_and_play(channel, member)
-            
+            logging.error(
+                "I'm already playing in the guild where {0} is - moving to {1} after song".format(
+                    member, channel
+                )
+            )
+            while channel.guild.me.voice is not None:
+                await sleep(3)
+            logging.debug("Seems like I finished playing in the other channel")
+            if member in channel.members:
+                logging.info("{0} is still connected, Belkhamising".format(member))
+                await connect_and_play(channel, member)
+
     finally:
-        # Check to prevent double messages to user from two threads 
-        with users_list_lock:
-            if key(member) not in returning_users:
+        # Check to prevent double messages to user from two threads
+        if should_send_message:
+            logging.debug("I should send {0} messages".format(member))
+            if not await dm_sent_this_weekend(member):
                 messages = [await have_a_nice_weekend(member)]
                 messages += get_seasonal_messages()
-                print('DEBUG: Messages are: {0}'.format(messages))
+                logging.debug("Messages for {0} are: {1}".format(member, messages))
                 for message in messages:
                     await send_message(member, message)
                     await sleep(2)
-                returning_users.add(key(member))
-        print('DEBUG: Left Connect&Play logic for {0}'.format(member))
+        logging.debug("Left Connect&Play logic for {0}".format(member))
 
 
 @bot_client.event
 async def on_ready():
-    print(f'{bot_client.user} has connected to Discord!')
+    logging.critical(f"{bot_client.user} has connected to Discord!")
 
 
 @bot_client.event
 async def on_message(message):
     if type(message.channel) is discord.DMChannel:
         if message.author is not bot_client.user:
-            print('[CRITICAL: Recieved a DM from {0}:'.format(message.author))
-            print('    \"{0}\"'.format(message.content))
+            logging.critical("Received a DM from {0}:".format(message.author))
+            logging.info('    "{0}"'.format(message.content))
 
 
 @bot_client.event
 async def on_voice_state_update(member, before, after):
     global bot_client
-    global returning_users
-    global users_list_lock
 
     def is_deaf():
-        return (after.deaf or after.self_deaf)
+        return after.deaf or after.self_deaf
 
     def was_deaf():
-        return (before.deaf or before.self_deaf)
-    
+        return before.deaf or before.self_deaf
+
     def joined_channel():
-        return (before.channel is not after.channel and after.channel is not None)
-    
-    if hala_bel_khamis():
-        if not member.bot:
+        return before.channel is not after.channel and after.channel is not None
+
+    if not member.bot:
+        logging.warning("{0} has connected to {1}".format(member, member.guild))
+        if hala_bel_khamis():
             if not is_deaf():
                 if joined_channel() or was_deaf():
-                    if key(member) not in returning_users:
-                        if not await dm_sent_this_weekend(member):
-                            await connect_and_play(after.channel, member)
-
-    elif len(returning_users) != 0:
-        print('CRITICAL: All in all, we had {0} users this week!'.format(len(returning_users)))
-        print('CRITICAL: Clearing the users list...')
-        with users_list_lock:
-            returning_users.clear()
+                    if not await dm_sent_this_weekend(member):
+                        logging.warning(
+                            "All checks successful for {0}, Belkhamising".format(member)
+                        )
+                        await connect_and_play(after.channel, member)
 
 
-print(f'Discord API version: {discord.__version__}')
-bot_client.run(os.environ['TOKEN'])
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logging.critical("Discord API version: {0}".format(discord.__version__))
+bot_client.run(os.environ["TOKEN"])
