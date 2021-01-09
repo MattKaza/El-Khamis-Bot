@@ -63,6 +63,7 @@ async def dm_sent_this_weekend(user):
     logging.info("{0} did not get a message this weekend!".format(user))
     return False
 
+
 async def have_a_nice_weekend(member):
     message = "{0}, Have a nice weekend! <3".format(member.mention)
     return message
@@ -114,6 +115,11 @@ async def send_message(member, message):
 
 async def play(voice_client):
     try:
+        logging.debug(
+            "Calling play at {0}\\{1}...".format(
+                voice_client.guild, voice_client.channel
+            )
+        )
         voice_client.play(
             source=discord.FFmpegOpusAudio(
                 source="./resources/encoded.opus", bitrate=48
