@@ -58,10 +58,10 @@ async def dm_sent_this_weekend(user):
         )
         if message.author == bot_client.user and hala_bel_khamis(message.created_at):
             logging.info("I did send {0} a message this weekend".format(user))
-            return True
+            # return True
+            return False  # TODO remove
     logging.info("{0} did not get a message this weekend!".format(user))
-    # return False
-    return True # TODO remove
+    return False
 
 async def have_a_nice_weekend(member):
     message = "{0}, Have a nice weekend! <3".format(member.mention)
