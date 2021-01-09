@@ -60,8 +60,8 @@ async def dm_sent_this_weekend(user):
             logging.info("I did send {0} a message this weekend".format(user))
             return True
     logging.info("{0} did not get a message this weekend!".format(user))
-    return False
-
+    # return False
+    return True # TODO remove
 
 async def have_a_nice_weekend(member):
     message = "{0}, Have a nice weekend! <3".format(member.mention)
