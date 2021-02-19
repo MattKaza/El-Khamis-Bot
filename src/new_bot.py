@@ -33,7 +33,9 @@ BELKHAMIS_DAYS = [3, 4, 5]  # If today is thu, fri or sat (0 is mon, 6 is sun)
 
 
 def hala_bel_khamis(date=datetime.utcnow()):
-    return date.weekday() in BELKHAMIS_DAYS
+    ret = date.weekday() in BELKHAMIS_DAYS
+    logging.debug("Date's day is {0} - returning {1}".format(date.weekday(), ret))
+    return ret
 
 
 def key(user):
@@ -42,7 +44,7 @@ def key(user):
 
 async def dm_sent_this_weekend(user):
     logging.debug("Checking if I sent {0} a message this weekend".format(user))
-    start_of_week = datetime.utcnow() - timedelta(days=datetime.utcnow().weekday())
+    start_of_week = datetime.utcnow() - timedelta(days=(datetime.utcnow().weekday() + 1) % 7)
     logging.debug("Start of week is {0}".format(start_of_week))
 
     if user.dm_channel is None:
@@ -114,6 +116,11 @@ async def send_message(member, message):
 
 async def play(voice_client):
     try:
+        logging.debug(
+            "Calling play at {0}\\{1}...".format(
+                voice_client.guild, voice_client.channel
+            )
+        )
         voice_client.play(
             source=discord.FFmpegOpusAudio(
                 source="./resources/encoded.opus", bitrate=48
@@ -165,13 +172,13 @@ async def connect_and_play(channel, member):
             while bot_client.user in channel.members:
                 await sleep(3)
             logging.debug("Seems like I finished playing where {0} is".format(member))
+
             if member in channel.members:
                 logging.debug(
                     "{0} is still in {1} after I finished playing :)".format(
                         member, channel
                     )
                 )
-                should_send_message = True
 
         else:
             logging.error(
@@ -189,15 +196,15 @@ async def connect_and_play(channel, member):
     finally:
         # Check to prevent double messages to user from two threads
         if should_send_message:
-            logging.debug("I should send {0} messages".format(member))
             if not await dm_sent_this_weekend(member):
+                logging.debug("I should send {0} messages".format(member))
                 messages = [await have_a_nice_weekend(member)]
                 messages += get_seasonal_messages()
                 logging.debug("Messages for {0} are: {1}".format(member, messages))
                 for message in messages:
                     await send_message(member, message)
                     await sleep(2)
-        logging.debug("Left Connect&Play logic for {0}".format(member))
+        logging.debug("Left Connect&Play logic for {0} at {1}".format(member, channel))
 
 
 @bot_client.event
@@ -227,7 +234,7 @@ async def on_voice_state_update(member, before, after):
         return before.channel is not after.channel and after.channel is not None
 
     if not member.bot:
-        logging.warning("{0} has connected to {1}".format(member, member.guild))
+        logging.warning("{0} triggered me in {1}".format(member, member.guild))
         if hala_bel_khamis():
             if not is_deaf():
                 if joined_channel() or was_deaf():
