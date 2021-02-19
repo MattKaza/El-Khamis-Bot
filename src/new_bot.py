@@ -172,7 +172,8 @@ async def connect_and_play(channel, member):
             while bot_client.user in channel.members:
                 await sleep(3)
             logging.debug("Seems like I finished playing where {0} is".format(member))
-
+            should_send_message = True
+            
             if member in channel.members:
                 logging.debug(
                     "{0} is still in {1} after I finished playing :)".format(
